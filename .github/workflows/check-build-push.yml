@@ -1,0 +1,42 @@
+# vim: softtabstop=2 shiftwidth=2 tabstop=2 expandtab
+# vim: textwidth=80 colorcolumn=+1
+---
+name: Check Build Push
+
+on:
+  # Allows manual workflow run (must in default branch to work)
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+#    container:
+#      image: bilelmoussaoui/flatpak-github-actions:freedesktop-24.08
+#      options: --privileged
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.ACTIONS_GITHUB_TOKEN }}
+          repository: wehagy/org.wezfurlong.wezterm
+          #path: manifests
+
+      - name: check
+        id: check
+        run: |
+          SHA256_NEW="$( \
+            curl -sSL https://api.github.com/repos/wez/wezterm/commits/main \
+              | jq --raw-output '.commit.tree.sha'
+          )"
+          if ! grep "$SHA256_NEW" org.wezfurlong.wezterm.yml; then
+            SHA256_OLD="$( \
+              sed -n '/commit/{n;s/[[:space:]]//g;p;}' org.wezfurlong.wezterm.yml
+            )"
+            sed "s/${SHA256_OLD}/${SHA256_NEW}/" org.wezfurlong.wezterm.yml
+          fi
+
+#      - name: commit
+#        id: commit
+#        uses: EndBug/add-and-commit@v9
+#        with:
+#          default_author: github_actions
